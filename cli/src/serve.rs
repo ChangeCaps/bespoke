@@ -24,10 +24,10 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[derive(Parser, Debug)]
 pub struct Args {
-    #[arg(default_value = "data.bs")]
+    #[arg(long, default_value = "data.bs")]
     path: PathBuf,
 
-    #[arg(default_value = "0.0.0.0:3000")]
+    #[arg(long, default_value = "0.0.0.0:3000")]
     addr: SocketAddr,
 }
 
