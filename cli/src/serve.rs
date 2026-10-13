@@ -28,7 +28,7 @@ pub struct Args {
     path: PathBuf,
 
     #[arg(long, default_value = "0.0.0.0:3000")]
-    addr: SocketAddr,
+    address: SocketAddr,
 }
 
 pub async fn serve(args: Args) -> eyre::Result<()> {
@@ -37,7 +37,7 @@ pub async fn serve(args: Args) -> eyre::Result<()> {
 
     let app = Router::new().nest("/v1", v1()).with_state(Arc::new(state));
 
-    let listener = TcpListener::bind(args.addr).await?;
+    let listener = TcpListener::bind(args.address).await?;
 
     axum::serve(listener, app).await?;
 
