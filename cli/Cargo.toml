@@ -1,0 +1,36 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eyre = "0.6"
+color-eyre = "0.6"
+rmp-serde = "1"
+dashmap = "6"
+base64 = "0.23"
+axum = "0.8"
+tokio-stream = "0.1"
+
+[dependencies.bespoke]
+workspace = true
+
+[dependencies.clap]
+version = "4"
+features = ["derive"]
+
+[dependencies.tokio]
+version = "1"
+features = ["full"]
+
+[dependencies.futures]
+version = "0.3"
+default-features = false
+
+[dependencies.bytes]
+version = "1"
+features = ["serde"]
+
+[[bin]]
+path = "src/main.rs"
+name = "bespoke"
