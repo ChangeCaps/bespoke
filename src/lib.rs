@@ -61,6 +61,8 @@ impl Bespoke {
 
     pub async fn set<K, V>(&self, key: &K, value: &V) -> Result<()>
     where
+        K: ?Sized,
+        V: ?Sized,
         K: Serialize,
         V: Serialize,
     {
@@ -71,6 +73,7 @@ impl Bespoke {
 
     pub async fn get<K, V>(&self, key: &K) -> Result<Option<V>>
     where
+        K: ?Sized,
         K: Serialize,
         V: DeserializeOwned,
     {
@@ -82,21 +85,26 @@ impl Bespoke {
         }
     }
 
-    pub async fn stream<K, V>(&self, key: &K) -> Result<impl Stream<Item = Result<V>> + use<K, V>>
+    pub async fn subscribe<K, V>(
+        &self,
+        key: &K,
+    ) -> Result<impl Stream<Item = Result<V>> + use<K, V>>
     where
+        K: ?Sized,
         K: Serialize,
         V: DeserializeOwned,
     {
         let key = rmp_serde::to_vec(key)?;
 
         Ok(self
-            .stream_bytes(&key)
+            .subscribe_bytes(&key)
             .await?
             .map(|item| rmp_serde::from_slice(&item?).map_err(Into::into)))
     }
 
     pub async fn remove<K>(&self, key: &K) -> Result<()>
     where
+        K: ?Sized,
         K: Serialize,
     {
         let key = rmp_serde::to_vec(key)?;
@@ -119,7 +127,7 @@ impl Bespoke {
         response.chunk().await.map_err(Into::into)
     }
 
-    pub async fn stream_bytes(
+    pub async fn subscribe_bytes(
         &self,
         key: &[u8],
     ) -> Result<impl Stream<Item = Result<Bytes>> + use<>> {
@@ -135,7 +143,7 @@ impl Bespoke {
     }
 
     fn key_url(&self, key: &[u8]) -> Url {
-        let key = base64::engine::general_purpose::STANDARD.encode(key);
+        let key = base64::engine::general_purpose::URL_SAFE.encode(key);
         self.url.join("v1/").unwrap().join(&key).unwrap()
     }
 }
