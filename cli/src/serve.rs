@@ -10,9 +10,10 @@ use axum::{
     BoxError, Router,
     body::{Body, Bytes},
     extract::{Path, State},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::get,
 };
+use base64::Engine;
 use clap::Parser;
 use dashmap::DashMap;
 use eyre::Context;
@@ -93,27 +94,46 @@ impl AppState {
 }
 
 fn v1() -> Router<Arc<AppState>> {
+    struct Error(eyre::Error);
+
+    impl<T> From<T> for Error
+    where
+        T: Into<eyre::Error>,
+    {
+        fn from(value: T) -> Self {
+            Self(value.into())
+        }
+    }
+
+    impl IntoResponse for Error {
+        fn into_response(self) -> Response {
+            Response::builder()
+                .body(Body::from(self.0.to_string()))
+                .unwrap()
+        }
+    }
+
     async fn get_value(
         State(state): State<Arc<AppState>>,
         Path(key): Path<String>,
-    ) -> impl IntoResponse {
+    ) -> Result<impl IntoResponse, Error> {
         let (sender, receiver) = unbounded_channel::<Result<Bytes, BoxError>>();
 
-        let key = Bytes::from(key);
+        let key = decode_key(&key)?;
         if let Some(value) = state.values.get(&key) {
             let _ = sender.send(Ok(value.clone()));
         }
 
         state.subscribers.entry(key).or_default().push(sender);
-        Body::from_stream(UnboundedReceiverStream::new(receiver))
+        Ok(Body::from_stream(UnboundedReceiverStream::new(receiver)))
     }
 
     async fn set_value(
         State(state): State<Arc<AppState>>,
         Path(key): Path<String>,
         value: Bytes,
-    ) -> impl IntoResponse {
-        let key = Bytes::from(key);
+    ) -> Result<impl IntoResponse, Error> {
+        let key = decode_key(&key)?;
         state.values.insert(key.clone(), value.clone());
 
         let _ = state.store();
@@ -121,15 +141,24 @@ fn v1() -> Router<Arc<AppState>> {
         if let Some(mut subscribers) = state.subscribers.get_mut(&key) {
             subscribers.retain(|subscriber| subscriber.send(Ok(value.clone())).is_ok());
         }
+
+        Ok(())
     }
 
     async fn remove_value(
         State(state): State<Arc<AppState>>,
         Path(key): Path<String>,
-    ) -> impl IntoResponse {
-        let key = Bytes::from(key);
+    ) -> Result<impl IntoResponse, Error> {
+        let key = decode_key(&key)?;
         state.values.remove(&key);
         state.subscribers.remove(&key);
+
+        Ok(())
+    }
+
+    fn decode_key(key: &str) -> Result<Bytes, Error> {
+        let key = base64::engine::general_purpose::URL_SAFE.decode(key)?;
+        Ok(Bytes::from(key))
     }
 
     Router::new().route(
