@@ -18,10 +18,12 @@ rmp-serde = "1"
 
 [dependencies.tokio]
 version =  "1"
+default-features = false
 features = ["net", "sync", "rt"]
 
 [dependencies.reqwest]
 version = "0.13"
+default-features = false
 features = ["stream"]
 
 [dependencies.futures]
